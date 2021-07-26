@@ -64,6 +64,10 @@ RUN apt-get update \
     libgoogle-glog-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build_benchmarks /benchmarking/build /benchmarks/
 COPY --from=build_benchmarks /tools-install/ /tools-install/
+COPY --from=build_benchmarks /benchmarking/build /benchmarks/
 
+WORKDIR /benchmarks
+
+ENTRYPOINT ["run-parts"]
+CMD ["."]

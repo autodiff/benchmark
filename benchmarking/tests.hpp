@@ -56,8 +56,8 @@ struct ManyToOne
 
   ManyToOne(int n) : n_(n) {}
 
-  Eigen::Index n() const { return n_; }
-  Eigen::Index input_size() const { return n_; }
+  int n() const { return n_; }
+  int input_size() const { return n_; }
 
   template<typename Derived>
   Eigen::Matrix<typename Derived::Scalar, 1, 1> operator()(
@@ -78,23 +78,26 @@ struct ManyToOne
 template<int _N>
 struct OneToMany
 {
-  static constexpr char name[]   = "OneToMany";
-  static constexpr int N         = _N;
-  static constexpr int InputSize = 1;
+  static constexpr char name[]    = "OneToMany";
+  static constexpr int N          = _N;
+  static constexpr int InputSize  = 1;
+  static constexpr int OutputSize = N == -1 ? -1 : N;
+
+  OneToMany(int n) : n_(n) {}
+
+  int n() const { return n_; }
+  int input_size() const { return 1; }
 
   template<typename Derived>
-  Eigen::
-    Matrix<typename Derived::Scalar, Derived::RowsAtCompileTime == -1 ? -1 : static_cast<int>(N), 1>
-    operator()(const Eigen::MatrixBase<Derived> & x) const
+  Eigen::Matrix<typename Derived::Scalar, OutputSize, 1> operator()(
+    const Eigen::MatrixBase<Derived> & x) const
   {
     using std::sin, std::cos;
 
     using Scalar = typename Derived::Scalar;
-    static constexpr int ValuesAtCompileTime =
-      Derived::RowsAtCompileTime == -1 ? -1 : static_cast<int>(N);
-    Eigen::Matrix<Scalar, ValuesAtCompileTime, 1> ret(N);
+    Eigen::Matrix<Scalar, OutputSize, 1> ret(n_);
     ret(0) = x(0);
-    for (int i = 0; i < N - 1; ++i) {
+    for (int i = 0; i < n_ - 1; ++i) {
       if (i % 2 == 0) {
         ret(i + 1) = sin(ret(i));
       } else {
@@ -103,6 +106,8 @@ struct OneToMany
     }
     return ret;
   }
+
+  int n_;
 };
 
 /**
@@ -117,11 +122,14 @@ struct ODE
   static constexpr int N         = _N;
   static constexpr int InputSize = N;
 
-  ODE()
+  int n() const { return n_; }
+  int input_size() const { return n_; }
+
+  ODE(int n) : n_(n)
   {
     // matrix with ones on super-diagonal
-    A_.setZero();
-    A_.template block(0, 1, N - 1, N - 1).diagonal().setOnes();
+    A_.setZero(n_, n_);
+    A_.template block(0, 1, n_ - 1, n_ - 1).diagonal().setOnes();
   }
 
   template<typename Derived>
@@ -151,6 +159,7 @@ struct ODE
 
 private:
   Eigen::Matrix<double, N, N> A_;
+  int n_;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -170,15 +179,24 @@ struct NeuralNet
   static constexpr int N         = _N;
   static constexpr int InputSize = N;
 
-  NeuralNet()
-  {
-    std::minstd_rand gen(101);  // fixed seed
-    std::normal_distribution<double> dis(0, 1);
-    auto gen_fcn = [&]() { return dis(gen); };
+  int n() const { return n0_; }
+  int input_size() const { return n0_; }
 
-    W1 = Eigen::Matrix<double, n1, n0>::NullaryExpr(gen_fcn);
-    W2 = Eigen::Matrix<double, n2, n1>::NullaryExpr(gen_fcn);
-    W3 = Eigen::Matrix<double, n3, n2>::NullaryExpr(gen_fcn);
+  NeuralNet(int n) : n0_(n)
+  {
+    n1_ = std::max<int>(1, n0_ / 2);
+    n2_ = std::max<int>(1, n1_ / 2);
+    n3_ = std::max<int>(1, n2_ / 2);
+
+    std::srand(101);
+
+    W1 = Eigen::Matrix<double, N1, N0>(n1_, n0_);
+    W2 = Eigen::Matrix<double, N2, N1>(n2_, n1_);
+    W3 = Eigen::Matrix<double, N3, N2>(n3_, n2_);
+
+    W1.setRandom();
+    W2.setRandom();
+    W3.setRandom();
   }
 
   template<typename Derived>
@@ -195,18 +213,20 @@ struct NeuralNet
     const auto a3 = z3.array().tanh().matrix().eval();
 
     return Eigen::Matrix<typename Derived::Scalar, 1, 1>(
-      (a3 - Eigen::Matrix<typename Derived::Scalar, n3, 1>::Ones()).squaredNorm());
+      (a3 - Eigen::Matrix<typename Derived::Scalar, N3, 1>::Ones(n3_)).squaredNorm());
   }
 
 private:
-  static constexpr int n0 = N;
-  static constexpr int n1 = std::max<int>(1, n0 / 2);
-  static constexpr int n2 = std::max<int>(1, n1 / 2);
-  static constexpr int n3 = std::max<int>(1, n2 / 2);
+  static constexpr int N0 = N;
+  static constexpr int N1 = N == -1 ? -1 : std::max<int>(1, N0 / 2);
+  static constexpr int N2 = N == -1 ? -1 : std::max<int>(1, N1 / 2);
+  static constexpr int N3 = N == -1 ? -1 : std::max<int>(1, N2 / 2);
 
-  Eigen::Matrix<double, n1, n0> W1;
-  Eigen::Matrix<double, n2, n1> W2;
-  Eigen::Matrix<double, n3, n2> W3;
+  int n0_, n1_, n2_, n3_;
+
+  Eigen::Matrix<double, N1, N0> W1;
+  Eigen::Matrix<double, N2, N1> W2;
+  Eigen::Matrix<double, N3, N2> W3;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -229,9 +249,12 @@ struct ReprojectionError
 {
   static constexpr char name[]   = "Reprojection";
   static constexpr int N         = _N;
-  static constexpr int InputSize = 6;
+  static constexpr int InputSize = N == -1 ? -1 : 6;
 
-  ReprojectionError()
+  int n() const { return n_; }
+  int input_size() const { return 6; }
+
+  ReprojectionError(int n) : n_(n)
   {
     // nominal pose
     P_CW_nom = SE3<double>{Eigen::Quaterniond::Identity(), Eigen::Vector3d{0.1, -0.3, 0.2}};
@@ -245,12 +268,13 @@ struct ReprojectionError
     CM(2, 2) = 1;
 
     // generate random data
-    std::minstd_rand gen(101);  // fixed seed
-    std::normal_distribution<double> dis(0, 1);
-    auto gen_fcn = [&]() { return dis(gen); };
+    std::srand(101);
 
-    for (int i = 0; i != N; ++i) {
-      pts_world[i]         = Eigen::Vector3d{0, 0, 3} + Eigen::Vector3d::NullaryExpr(gen_fcn);
+    pts_world.resize(n_);
+    pts_image.resize(n_);
+
+    for (int i = 0; i != n_; ++i) {
+      pts_world[i]         = Eigen::Vector3d{0, 0, 3} + Eigen::Vector3d::Random();
       Eigen::Vector3d proj = CM * (P_CW_nom * pts_world[i]);
       pts_image[i]         = proj.template head<2>() / proj(2);
     }
@@ -269,7 +293,7 @@ struct ReprojectionError
 
     // Transform world points to camera frame, re-project, square
     Eigen::Matrix<Scalar, 1, 1> ret(0);
-    for (int i = 0; i != N; ++i) {
+    for (int i = 0; i != n_; ++i) {
       Vec3 proj = CMc * (P_CW * pts_world[i].template cast<Scalar>().eval());
       ret(0) +=
         (proj.template head<2>() / proj(2) - pts_image[i].template cast<Scalar>()).squaredNorm();
@@ -278,10 +302,11 @@ struct ReprojectionError
   }
 
 private:
-  Eigen::Matrix<double, 3, 3> CM;            // camera matrix
-  SE3<double> P_CW_nom{};                    // nominal camera pose
-  std::array<Eigen::Vector3d, N> pts_world;  // points in world frame
-  std::array<Eigen::Vector2d, N> pts_image;  // points in image plane
+  int n_;
+  Eigen::Matrix<double, 3, 3> CM;  // camera matrix
+  SE3<double> P_CW_nom{};          // nominal camera pose
+  std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> pts_world;
+  std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d>> pts_image;
 
 public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
@@ -297,16 +322,21 @@ struct Manipulator
 {
   static constexpr char name[]   = "Manipulator";
   static constexpr int N         = _N;
-  static constexpr int InputSize = 6;
+  static constexpr int InputSize = N == -1 ? -1 : 6;
 
-  Manipulator()
+  int n() const { return n_; }
+  int input_size() const { return 6; }
+
+  Manipulator(int n) : n_(n)
   {
     // generate random link positions
     std::minstd_rand gen(101);  // fixed seed
     std::uniform_real_distribution<double> dis(-1, 1);
     auto gen_fcn = [&]() { return dis(gen); };
 
-    for (int i = 0; i != N; ++i) {
+    link_pose.resize(n);
+
+    for (int i = 0; i != n; ++i) {
       link_pose[i] = SE3<double>{Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitX())
                                    * Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitY())
                                    * Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitZ()),
@@ -321,13 +351,14 @@ struct Manipulator
     using Scalar  = typename Derived::Scalar;
     SE3<Scalar> P = SE3<Scalar>::exp(x);
 
-    for (int i = 0; i != N; ++i) { P *= link_pose[i].template cast<Scalar>(); }
+    for (int i = 0; i != n_; ++i) { P *= link_pose[i].template cast<Scalar>(); }
 
     return P * Eigen::Matrix<Scalar, 3, 1>::UnitX().eval();
   }
 
 private:
-  std::array<SE3<double>, N> link_pose;
+  int n_;
+  std::vector<SE3<double>, Eigen::aligned_allocator<SE3<double>>> link_pose;
 };
 
 /**
@@ -340,12 +371,15 @@ struct SE3ODE
 {
   static constexpr char name[]   = "SE3ODE";
   static constexpr int N         = _N;
-  static constexpr int InputSize = 6;
+  static constexpr int InputSize = N == -1 ? -1 : 6;
 
-  SE3ODE()
+  int n() const { return n_; }
+  int input_size() const { return 6; }
+
+  SE3ODE(int n) : n_(n)
   {
     velocity << 0.1, -0.2, 0.3, 0.1, -0.2, 0.3;
-    Pfinal = SE3<double>{} * SE3<double>::exp(static_cast<double>(N) * 0.01 * velocity);
+    Pfinal = SE3<double>{} * SE3<double>::exp(static_cast<double>(n_) * 0.01 * velocity);
   }
 
   template<typename Derived>
@@ -372,13 +406,14 @@ struct SE3ODE
       P,
       scalar_t{0.},
       scalar_t{0.01},
-      N);
+      n_);
 
     const SE3<scalar_t> Pfinalinv = Pfinal.inv().template cast<scalar_t>();
     return (Pfinalinv * P).log();
   }
 
 private:
+  int n_;
   Eigen::Matrix<double, 6, 1> velocity;
   SE3<double> Pfinal{};
 

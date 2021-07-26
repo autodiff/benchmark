@@ -33,7 +33,7 @@ public:
     double * jacobian_ptrs[1]        = {Jrow.data()};
 
     if constexpr (Nx == -1) {
-      static_assert(Nx != -1, "Dynamic size not supported in ceres wrapper");
+      // not handled for now
 
       // Dynamic sizes not suppored in AutoDiffereniate, see
       // https://github.com/ceres-solver/ceres-solver/blob/ec4f2995bbde911d6861fb5c9bb7353ad796e02b/include/ceres/dynamic_autodiff_cost_function.h#L112

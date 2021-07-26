@@ -5,29 +5,64 @@ Scripts and tests to benchmark `autodiff` against itself and against other C++ a
 * Evaluate multiple autodifferentiation tools on a specific problem
 * Compare different versions of `autodiff` to track performance
 
-## TODOs
-
-This repository is a work in progress.
-
-* [x] Install tools and build tests in a Dockerfile
-* [x] Generate exectuable for each benchmark tool
-* [x] Enable dynamically sized tests
-* [ ] Write script that runs tests and collects results, include in Dockerfile
-
 ## Test requirements
 
-* Input and outputs are Eigen vectors
-* Static-sized matrices
+* Input and outputs are Eigen vectors of static or dynamic size
+* All calculations are in doubles
+* All tools and benchmarks are compiled in `Release` mode (`-O3 -DNDEBUG`)
 * For tape methods use all available optimizations in recording phase
 
-## Running the benchmarks
+## Building and running the benchmarks
 
-Docker is the preferred option to compile the different tools:
-```
-docker build -t benchmarker .
+### Using docker
+
+Docker is probably the easiest option.
+
+1. Build the Dockerfile
+
+```zsh
+docker build -t benchmarks .
 ```
 
-## Other autodiff benchmarks
+2. Run the benchmarks and collect results
+```zsh
+docker run benchmarks | tee plotting/data
+```
+
+3. Visualize the results with the `plotting/visualization.ipynb` notebook.
+
+### Locally
+
+For development and faster iteration it can be convenient to work outside of docker.
+It is recommended to install the tools in a local folder for easy removal:
+```zsh
+export BENCHMARK_INSTALL=~/benchmark-install  # modify as desired
+```
+
+1. Download, compile, and install desired tools
+```zsh
+mkdir -p tools/build && cd tools/build
+cmake ..                                       \
+   -DCMAKE_INSTALL_PREFIX=${BENCHMARK_INSTALL} \
+   -DINSTALL_ALL=ON     # or select individual tools
+make
+```
+
+2. Now the benchmarks themselves can be compiled.
+```zsh
+mkdir -p benchmarking/build && cd benchmarking/build
+cmake ..                                   \
+  -DTOOLS_INSTALL_DIR=${BENCHMARK_INSTALL}
+make
+```
+
+3. Now it should be possible to run the different benchmarks. E.g.:
+```zsh
+./bm_autodiff_real
+```
+
+
+## Other autodifferentiation benchmarks
 
 * Adept: https://github.com/rjhogan/Adept-2/tree/master/benchmark
 * Ceres: https://github.com/ceres-solver/ceres-solver/tree/master/internal/ceres/autodiff_benchmarks

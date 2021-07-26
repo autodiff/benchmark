@@ -27,7 +27,7 @@ struct EigenFunctor
   /**
    * @brief Dimension of output vector
    */
-  int ny() const { return ny_; }
+  int values() const { return ny_; }
 
   /**
    * @brief Functor form used in unsupported/AdolcForward

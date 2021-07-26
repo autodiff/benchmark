@@ -46,19 +46,23 @@ void run_speedtest(const Test & test)
 {
   auto res = ad_testing::test_speed<Tester>(test);
 
-  std::string name = std::string(Test::name)
-    + "<" + std::to_string(Test::N) + ">"
-    + "(" + std::to_string(test.n()) + ")";
+  std::string name = std::string(Test::name);
+
+  if (Test::N != -1) {
+    name += "_" + std::to_string(Test::N) + "s";
+  } else {
+    name += "_" + std::to_string(test.n()) + "d";
+  }
 
   if (res.calc_timeout || res.setup_timeout) {
-    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(20) << name
+    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(22) << name
               << "TIMEOUT (DETACHED)" << std::endl;
     return;
   }
 
   // check if error occured
   if (!res.exception.empty()) {
-    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(20) << name
+    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(22) << name
               << "EXCEPTION: " << res.exception << std::endl;
     return;
   }
@@ -76,134 +80,133 @@ void run_speedtest(const Test & test)
             << static_cast<double>(res.calc_time.count()) / res.calc_iter << std::endl;
 }
 
-template<typename Tester, typename ... Test>
+template<typename Tester, typename... Test>
 void run_tests(const std::tuple<Test...> & tests)
 {
-  ad_testing::static_for<std::tuple_size_v<std::decay_t<decltype(tests)>>>([&](auto i) {
-    run_speedtest<Tester>(std::get<i>(tests));
-  });
+  ad_testing::static_for<std::tuple_size_v<std::decay_t<decltype(tests)>>>(
+    [&](auto i) { run_speedtest<Tester>(std::get<i>(tests)); });
 }
 
 int main()
 {
-  auto all_tests = std::make_tuple(
-    Constant<3>(3),
-    Constant<-1>(3),
-    ManyToOne<3>(3),
-    ManyToOne<-1>(3)
-    /* Constant<10>,
-    Constant<100>,
-    Constant<1000>,
-    ManyToOne<3>,
-    ManyToOne<10>,
-    ManyToOne<100>,
-    ManyToOne<1000>,
-    OneToMany<3>,
-    OneToMany<10>,
-    OneToMany<100>,
-    OneToMany<1000>,
-    ODE<3>,
-    ODE<10>,
-    ODE<30>,
-    NeuralNet<3>,
-    NeuralNet<10>,
-    NeuralNet<100>,
-    ReprojectionError<3>,
-    ReprojectionError<10>,
-    ReprojectionError<100>,
-    ReprojectionError<1000>,
-    Manipulator<3>,
-    Manipulator<10>,
-    Manipulator<100>,
-    Manipulator<1000>,
-    SE3ODE<3>,
-    SE3ODE<10>,
-    SE3ODE<100>,
-    SE3ODE<1000> */
-  );
+  auto basic_tests = std::make_tuple(Constant<4>(4),
+    Constant<-1>(4),
+    Constant<10>(10),
+    Constant<-1>(10),
+    Constant<-1>(100),
+    Constant<-1>(1000),
+    ManyToOne<4>(4),
+    ManyToOne<-1>(4),
+    ManyToOne<10>(10),
+    ManyToOne<-1>(10),
+    ManyToOne<-1>(100),
+    ManyToOne<-1>(1000),
+    OneToMany<4>(4),
+    OneToMany<-1>(4),
+    OneToMany<10>(10),
+    OneToMany<-1>(10),
+    OneToMany<-1>(100),
+    OneToMany<-1>(1000),
+    NeuralNet<4>(4),
+    NeuralNet<-1>(4),
+    NeuralNet<10>(10),
+    NeuralNet<-1>(10),
+    NeuralNet<-1>(100),
+    NeuralNet<-1>(1000));
 
-  auto tests_no_ode = std::make_tuple(
-    Constant<3>(3),
-    /* Constant<10>(10),
-    Constant<100>(100),
-    Constant<1000>(1000), */
-    ManyToOne<3>(3)
-    /* ManyToOne<100>,
-    ManyToOne<1000>,
-    OneToMany<3>,
-    OneToMany<10>,
-    OneToMany<100>,
-    OneToMany<1000>,
-    NeuralNet<3>,
-    NeuralNet<10>,
-    NeuralNet<100>,
-    ReprojectionError<3>,
-    ReprojectionError<10>,
-    ReprojectionError<100>,
-    ReprojectionError<1000>,
-    Manipulator<3>,
-    Manipulator<10>,
-    Manipulator<100>,
-    Manipulator<1000> */
-  );
+  auto ode_tests = std::make_tuple(ODE<4>(4), ODE<10>(10), ODE<-1>(40));
 
-  auto tests_no_se3 = std::make_tuple(
-    Constant<3>(3),
-    Constant<-1>(3)
-    /* Constant<10>,
-    Constant<100>,
-    Constant<1000>,
-    ManyToOne<3>,
-    ManyToOne<10>,
-    ManyToOne<100>,
-    ManyToOne<1000>,
-    OneToMany<3>,
-    OneToMany<10>,
-    OneToMany<100>,
-    OneToMany<1000>,
-    ODE<3>,
-    ODE<10>,
-    ODE<30>,
-    NeuralNet<3>,
-    NeuralNet<10>,
-    NeuralNet<100> */
-  );
+  auto manipulator_tests = std::make_tuple(
+    Manipulator<4>(4), Manipulator<10>(10), Manipulator<-1>(100), Manipulator<-1>(1000));
+
+  auto reprojection_tests = std::make_tuple(ReprojectionError<4>(4),
+    ReprojectionError<10>(10),
+    ReprojectionError<-1>(100),
+    ReprojectionError<-1>(1000));
+
+  auto se3_ode_tests =
+    std::make_tuple(SE3ODE<4>(4), SE3ODE<10>(10), SE3ODE<100>(100), SE3ODE<1000>(1000));
 
   // these can run all tests (but do not necessarily succeed)
 #ifdef ENABLE_ADEPT
-  run_tests<AdeptWrapper>(all_tests);
+  run_tests<AdeptWrapper>(basic_tests);
+  run_tests<AdeptWrapper>(ode_tests);
+  run_tests<AdeptWrapper>(manipulator_tests);
+  run_tests<AdeptWrapper>(reprojection_tests);
+  run_tests<AdeptWrapper>(se3_ode_tests);
 #endif
 #ifdef ENABLE_ADOLC
-  run_tests<AdolcTapelessWrapper>(all_tests);
+  run_tests<AdolcTapelessWrapper>(basic_tests);
+  run_tests<AdolcTapelessWrapper>(ode_tests);
+  run_tests<AdolcTapelessWrapper>(manipulator_tests);
+  run_tests<AdolcTapelessWrapper>(reprojection_tests);
+  run_tests<AdolcTapelessWrapper>(se3_ode_tests);
   // Adolc taped can not handle Eigen quaterion-vector product
-  run_tests<AdolcWrapper>(tests_no_se3);
+  run_tests<AdolcWrapper>(basic_tests);
+  run_tests<AdolcWrapper>(ode_tests);
 #endif
 #ifdef ENABLE_AUTODIFF_DUAL
-  run_tests<AutodiffDualWrapper>(all_tests);
+  run_tests<AutodiffDualWrapper>(basic_tests);
+  run_tests<AutodiffDualWrapper>(ode_tests);
+  run_tests<AutodiffDualWrapper>(manipulator_tests);
+  run_tests<AutodiffDualWrapper>(reprojection_tests);
+  run_tests<AutodiffDualWrapper>(se3_ode_tests);
 #endif
 #ifdef ENABLE_AUTODIFF_REAL
   // Real can not handle atan2
-  run_tests<AutodiffRealWrapper>(tests_no_se3);
+  run_tests<AutodiffRealWrapper>(basic_tests);
+  run_tests<AutodiffRealWrapper>(ode_tests);
 #endif
 #ifdef ENABLE_AUTODIFF_VAR
-  // * AutodiffRev times out on ODE tests
-  run_tests<AutodiffVarWrapper>(tests_no_ode);
+  // * AutodiffRev times out on ODE and large Manipulator tests
+  run_tests<AutodiffVarWrapper>(basic_tests);
+  run_tests<AutodiffVarWrapper>(std::make_tuple(Manipulator<4>(4), Manipulator<10>(10)));
+  run_tests<AutodiffVarWrapper>(reprojection_tests);
 #endif
 #ifdef ENABLE_CPPAD
-  run_tests<CppADWrapper>(all_tests);
+  run_tests<CppADWrapper>(basic_tests);
+  run_tests<CppADWrapper>(ode_tests);
+  run_tests<CppADWrapper>(manipulator_tests);
+  run_tests<CppADWrapper>(reprojection_tests);
+  run_tests<CppADWrapper>(se3_ode_tests);
 #endif
 #ifdef ENABLE_CPPADCG
-  run_tests<CppADCGWrapper>(all_tests);
+  run_tests<CppADCGWrapper>(basic_tests);
+  run_tests<CppADCGWrapper>(ode_tests);
+  run_tests<CppADCGWrapper>(manipulator_tests);
+  run_tests<CppADCGWrapper>(reprojection_tests);
+  run_tests<CppADCGWrapper>(se3_ode_tests);
 #endif
 #ifdef ENABLE_NUMERICAL
-  run_tests<NumericalWrapper>(all_tests);
+  run_tests<NumericalWrapper>(basic_tests);
+  run_tests<NumericalWrapper>(ode_tests);
+  run_tests<NumericalWrapper>(manipulator_tests);
+  run_tests<NumericalWrapper>(reprojection_tests);
+  run_tests<NumericalWrapper>(se3_ode_tests);
 #endif
 #ifdef ENABLE_SACADO
-  run_tests<SacadoWrapper>(all_tests);
+  run_tests<SacadoWrapper>(basic_tests);
+  run_tests<SacadoWrapper>(ode_tests);
+  run_tests<SacadoWrapper>(manipulator_tests);
+  run_tests<SacadoWrapper>(reprojection_tests);
+  run_tests<SacadoWrapper>(se3_ode_tests);
 #endif
 #ifdef ENABLE_CERES
-  // * Ceres can't handle ODE tests because no conversion double -> Jet
-  run_tests<CeresWrapper>(tests_no_ode);
+  // Ceres can't handle ODE tests because no conversion double -> Jet
+  // Also can't handle dynamically sized tests
+  auto ceres_tests = std::make_tuple(Constant<4>(4),
+    Constant<4>(4),
+    Constant<10>(10),
+    ManyToOne<4>(4),
+    ManyToOne<10>(10),
+    OneToMany<4>(4),
+    OneToMany<10>(10),
+    NeuralNet<4>(4),
+    NeuralNet<10>(10),
+    Manipulator<4>(4),
+    Manipulator<10>(10),
+    ReprojectionError<10>(10));
+  run_tests<CeresWrapper>(ceres_tests);
 #endif
 
   return 0;
