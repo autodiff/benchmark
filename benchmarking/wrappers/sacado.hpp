@@ -1,10 +1,9 @@
 #ifndef WRAPPERS__SACADO_HPP_
 #define WRAPPERS__SACADO_HPP_
 
+#include <Eigen/Core>
 #include <Sacado.hpp>
 #include <utility>
-
-#include "common.hpp"
 
 namespace ad_testing {
 
@@ -18,9 +17,7 @@ public:
   {}
 
   template<typename Func, typename Derived>
-  void run(Func && f,
-    const Eigen::PlainObjectBase<Derived> & x,
-    typename EigenFunctor<Func, Derived>::JacobianType & J)
+  void run(Func && f, const Eigen::PlainObjectBase<Derived> & x, Eigen::MatrixXd & J)
   {
     Eigen::Matrix<Sacado::Fad::DFad<double>, Derived::RowsAtCompileTime, 1> x_ad(x.size());
     for (std::size_t i = 0; i < x.size(); ++i) {

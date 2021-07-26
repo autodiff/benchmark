@@ -12,6 +12,8 @@
 
 #include "se3.hpp"
 
+using Eigen::Matrix, Eigen::MatrixBase;
+
 namespace ad_testing {
 
 /**
@@ -19,19 +21,25 @@ namespace ad_testing {
  *
  * f: R -> R^N
  */
-template<std::size_t _N>
+template<int _N>
 struct Constant
 {
-  static constexpr char name[]           = "Constant";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = 1;
+  static constexpr char name[]   = "Constant";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = 1;
 
-  template<typename Derived>
-  Eigen::Matrix<typename Derived::Scalar, Derived::RowsAtCompileTime, 1> operator()(
-    const Eigen::MatrixBase<Derived> & x) const
+  Constant(int n) : n_(n) {}
+
+  int n() const { return n_; }
+  int input_size() const { return 1; }
+
+  template<typename D>
+  Matrix<typename D::Scalar, N, 1> operator()(const MatrixBase<D> &) const
   {
-    return Eigen::Matrix<typename Derived::Scalar, Derived::RowsAtCompileTime, 1>::Ones(x.size());
+    return Matrix<typename D::Scalar, N, 1>::Ones(n_);
   }
+
+  int n_;
 };
 
 /**
@@ -39,12 +47,17 @@ struct Constant
  *
  * f: R^N -> R
  */
-template<std::size_t _N>
+template<int _N>
 struct ManyToOne
 {
-  static constexpr char name[]           = "ManyToOne";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = N;
+  static constexpr char name[]   = "ManyToOne";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = N;
+
+  ManyToOne(int n) : n_(n) {}
+
+  Eigen::Index n() const { return n_; }
+  Eigen::Index input_size() const { return n_; }
 
   template<typename Derived>
   Eigen::Matrix<typename Derived::Scalar, 1, 1> operator()(
@@ -53,6 +66,8 @@ struct ManyToOne
     return Eigen::Matrix<typename Derived::Scalar, 1, 1>(
       (x + x.cwiseInverse()).array().sin().matrix().sum());
   }
+
+  int n_;
 };
 
 /**
@@ -60,12 +75,12 @@ struct ManyToOne
  *
  * f: R -> R^N
  */
-template<std::size_t _N>
+template<int _N>
 struct OneToMany
 {
-  static constexpr char name[]           = "OneToMany";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = 1;
+  static constexpr char name[]   = "OneToMany";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = 1;
 
   template<typename Derived>
   Eigen::
@@ -79,7 +94,7 @@ struct OneToMany
       Derived::RowsAtCompileTime == -1 ? -1 : static_cast<int>(N);
     Eigen::Matrix<Scalar, ValuesAtCompileTime, 1> ret(N);
     ret(0) = x(0);
-    for (std::size_t i = 0; i < N - 1; ++i) {
+    for (int i = 0; i < N - 1; ++i) {
       if (i % 2 == 0) {
         ret(i + 1) = sin(ret(i));
       } else {
@@ -95,12 +110,12 @@ struct OneToMany
  *
  * f: R^N -> R^N
  */
-template<std::size_t _N>
+template<int _N>
 struct ODE
 {
-  static constexpr char name[]           = "ODE";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = N;
+  static constexpr char name[]   = "ODE";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = N;
 
   ODE()
   {
@@ -148,12 +163,12 @@ public:
  *
  * f: R^N -> R
  */
-template<std::size_t _N>
+template<int _N>
 struct NeuralNet
 {
-  static constexpr char name[]           = "NeuralNet";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = N;
+  static constexpr char name[]   = "NeuralNet";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = N;
 
   NeuralNet()
   {
@@ -184,10 +199,10 @@ struct NeuralNet
   }
 
 private:
-  static constexpr std::size_t n0 = N;
-  static constexpr std::size_t n1 = std::max<int>(1, n0 / 2);
-  static constexpr std::size_t n2 = std::max<int>(1, n1 / 2);
-  static constexpr std::size_t n3 = std::max<int>(1, n2 / 2);
+  static constexpr int n0 = N;
+  static constexpr int n1 = std::max<int>(1, n0 / 2);
+  static constexpr int n2 = std::max<int>(1, n1 / 2);
+  static constexpr int n3 = std::max<int>(1, n2 / 2);
 
   Eigen::Matrix<double, n1, n0> W1;
   Eigen::Matrix<double, n2, n1> W2;
@@ -209,12 +224,12 @@ public:
  *       - P_CW a nominal camera pose
  *       - x is a tangent space element defining an incremental pose
  */
-template<std::size_t _N>
+template<int _N>
 struct ReprojectionError
 {
-  static constexpr char name[]           = "Reprojection";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = 6;
+  static constexpr char name[]   = "Reprojection";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = 6;
 
   ReprojectionError()
   {
@@ -234,7 +249,7 @@ struct ReprojectionError
     std::normal_distribution<double> dis(0, 1);
     auto gen_fcn = [&]() { return dis(gen); };
 
-    for (std::size_t i = 0; i != N; ++i) {
+    for (int i = 0; i != N; ++i) {
       pts_world[i]         = Eigen::Vector3d{0, 0, 3} + Eigen::Vector3d::NullaryExpr(gen_fcn);
       Eigen::Vector3d proj = CM * (P_CW_nom * pts_world[i]);
       pts_image[i]         = proj.template head<2>() / proj(2);
@@ -254,7 +269,7 @@ struct ReprojectionError
 
     // Transform world points to camera frame, re-project, square
     Eigen::Matrix<Scalar, 1, 1> ret(0);
-    for (std::size_t i = 0; i != N; ++i) {
+    for (int i = 0; i != N; ++i) {
       Vec3 proj = CMc * (P_CW * pts_world[i].template cast<Scalar>().eval());
       ret(0) +=
         (proj.template head<2>() / proj(2) - pts_image[i].template cast<Scalar>()).squaredNorm();
@@ -277,12 +292,12 @@ public:
  *
  * f: R^6 -> R^6
  */
-template<std::size_t _N>
+template<int _N>
 struct Manipulator
 {
-  static constexpr char name[]           = "Manipulator";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = 6;
+  static constexpr char name[]   = "Manipulator";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = 6;
 
   Manipulator()
   {
@@ -291,7 +306,7 @@ struct Manipulator
     std::uniform_real_distribution<double> dis(-1, 1);
     auto gen_fcn = [&]() { return dis(gen); };
 
-    for (std::size_t i = 0; i != N; ++i) {
+    for (int i = 0; i != N; ++i) {
       link_pose[i] = SE3<double>{Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitX())
                                    * Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitY())
                                    * Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitZ()),
@@ -306,7 +321,7 @@ struct Manipulator
     using Scalar  = typename Derived::Scalar;
     SE3<Scalar> P = SE3<Scalar>::exp(x);
 
-    for (std::size_t i = 0; i != N; ++i) { P *= link_pose[i].template cast<Scalar>(); }
+    for (int i = 0; i != N; ++i) { P *= link_pose[i].template cast<Scalar>(); }
 
     return P * Eigen::Matrix<Scalar, 3, 1>::UnitX().eval();
   }
@@ -320,12 +335,12 @@ private:
  *
  * f: R^6 -> R^6
  */
-template<std::size_t _N>
+template<int _N>
 struct SE3ODE
 {
-  static constexpr char name[]           = "SE3ODE";
-  static constexpr std::size_t N         = _N;
-  static constexpr std::size_t InputSize = 6;
+  static constexpr char name[]   = "SE3ODE";
+  static constexpr int N         = _N;
+  static constexpr int InputSize = 6;
 
   SE3ODE()
   {

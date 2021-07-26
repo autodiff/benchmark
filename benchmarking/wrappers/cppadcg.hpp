@@ -1,10 +1,9 @@
 #ifndef WRAPPERS__CPPADCG_HPP_
 #define WRAPPERS__CPPADCG_HPP_
 
+#include <Eigen/Core>
 #include <cppad/cg.hpp>
 #include <memory>
-
-#include "common.hpp"
 
 namespace ad_testing {
 
@@ -46,13 +45,11 @@ public:
   }
 
   template<typename Func, typename Derived>
-  void run(Func &&,
-    const Eigen::PlainObjectBase<Derived> & x,
-    typename EigenFunctor<Func, Derived>::JacobianType & J)
+  void run(Func &&, const Eigen::PlainObjectBase<Derived> & x, Eigen::MatrixXd & J)
   {
     Eigen::VectorXd x_dyn = x;
     auto j_ad             = model->Jacobian(x_dyn);
-    J                     = Eigen::Map<typename EigenFunctor<Func, Derived>::JacobianTypeRowMajor>(
+    J                     = Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(
       j_ad.data(), model->Range(), model->Domain());
   }
 

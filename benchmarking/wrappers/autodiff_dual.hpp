@@ -5,8 +5,6 @@
 #include <autodiff/forward/dual/eigen.hpp>
 #include <utility>
 
-#include "common.hpp"
-
 namespace ad_testing {
 
 class AutodiffDualWrapper
@@ -19,9 +17,7 @@ public:
   {}
 
   template<typename Func, typename Derived>
-  void run(Func && f,
-    const Eigen::PlainObjectBase<Derived> & x,
-    typename EigenFunctor<Func, Derived>::JacobianType & J)
+  void run(Func && f, const Eigen::PlainObjectBase<Derived> & x, Eigen::MatrixXd & J)
   {
     auto x_ad = x.template cast<autodiff::dual>().eval();
     J         = autodiff::jacobian(std::forward<Func>(f), autodiff::wrt(x_ad), autodiff::at(x_ad));

@@ -14,17 +14,20 @@ public:
   static constexpr char name[] = "Numerical";
 
   template<typename Func, typename Derived>
-  void setup(Func &&, const Eigen::PlainObjectBase<Derived> &)
-  {}
+  void setup(Func && f, const Eigen::PlainObjectBase<Derived> & x)
+  {
+    ny_ = f(x).size();
+  }
 
   template<typename Func, typename Derived>
-  void run(Func && f,
-    const Eigen::PlainObjectBase<Derived> & x,
-    typename EigenFunctor<Func, Derived>::JacobianType & J)
+  void run(Func && f, const Eigen::PlainObjectBase<Derived> & x, Eigen::MatrixXd & J)
   {
-    Eigen::NumericalDiff func(EigenFunctor<Func, Derived>(std::forward<Func>(f)));
+    Eigen::NumericalDiff func(EigenFunctor<Func, Derived>(std::forward<Func>(f), ny_));
     func.df(x, J);
   }
+
+private:
+  int ny_;
 };
 
 }  // namespace ad_testing

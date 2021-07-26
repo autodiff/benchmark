@@ -4,7 +4,7 @@
 #include <adept.h>
 #include <utility>
 
-#include "common.hpp"
+#include <Eigen/Core>
 
 namespace Eigen {
 
@@ -40,9 +40,7 @@ public:
   {}
 
   template<typename Func, typename Derived>
-  void run(Func && f,
-    const Eigen::PlainObjectBase<Derived> & x,
-    typename EigenFunctor<Func, Derived>::JacobianType & J)
+  void run(Func && f, const Eigen::PlainObjectBase<Derived> & x, Eigen::MatrixXd & J)
   {
     adept::Stack stack;
 

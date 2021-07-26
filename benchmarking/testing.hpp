@@ -12,66 +12,56 @@
 #include <tuple>
 #include <utility>
 
-#include "wrappers/common.hpp"
-
 
 using namespace std::chrono_literals;
 
 namespace ad_testing {
 
-// Static for loop
-template<size_t i, size_t ibegin, size_t iend, typename Function>
-constexpr auto AuxStaticFor(Function && f)
+/**
+ * @brief Compile-time for loop implementation
+ */
+template<typename _F, std::size_t... _Idx>
+inline static constexpr auto static_for_impl(_F && f, std::index_sequence<_Idx...>)
 {
-  if constexpr (i < iend) {
-    f(std::integral_constant<size_t, i>{});
-    AuxStaticFor<i + 1, ibegin, iend>(std::forward<Function>(f));
-  }
+  return (std::invoke(f, std::integral_constant<std::size_t, _Idx>()), ...);
 }
 
-template<size_t ibegin, size_t iend, typename Function>
-constexpr auto StaticFor(Function && f)
+/**
+ * @brief Compile-time for loop over 0, ..., _I-1
+ */
+template<std::size_t _I, typename _F>
+inline static constexpr auto static_for(_F && f)
 {
-  AuxStaticFor<ibegin, ibegin, iend>(std::forward<Function>(f));
+  return static_for_impl(std::forward<_F>(f), std::make_index_sequence<_I>{});
 }
-
-template<size_t iend, typename Function>
-constexpr auto StaticFor(Function && f)
-{
-  StaticFor<0, iend>(std::forward<Function>(f));
-}
-
-// Helper type to holds list of types
-template<typename... T>
-struct TypePack
-{
-  static constexpr std::size_t size = sizeof...(T);
-
-  template<std::size_t Idx>
-  using type = std::tuple_element_t<Idx, std::tuple<T...>>;
-};
 
 // Check that two testers agree on a test
 template<typename Tester1, typename Tester2, typename Test>
-bool test_correctness()
+bool test_correctness(const Test & test)
 {
+  static constexpr Eigen::Index Nx = Test::InputSize;
+
+  Eigen::Index nx = test.input_size();
+  Eigen::Matrix<double, Nx, 1> x(nx);
+  x.setOnes();
+  Eigen::Index ny = test(x).size();
+
+  Eigen::MatrixXd J1(ny, nx), J2(ny, nx);
+
   Tester1 tester1;
   Tester2 tester2;
-  Test test;
 
-  Eigen::Matrix<double, Test::InputSize, 1> x = Eigen::Matrix<double, Test::InputSize, 1>::Ones();
-  typename EigenFunctor<Test, decltype(x)>::JacobianType J1, J2;
   try {
     // setup
-    tester1.setup([&test](const auto & x) { return test(x); }, x);
-    tester2.setup([&test](const auto & x) { return test(x); }, x);
+    tester1.setup(test, x);
+    tester2.setup(test, x);
 
     // test
-    for (size_t i = 0; i < 5; i++) {
-      x = Eigen::Matrix<double, Test::InputSize, 1>::Random();
+    for (auto i = 0u; i != 5u; i++) {
+      x.setRandom();
 
-      tester1.run([&test](const auto & x) { return test(x); }, x, J1);
-      tester2.run([&test](const auto & x) { return test(x); }, x, J2);
+      tester1.run(test, x, J1);
+      tester2.run(test, x, J2);
 
       if (!J1.isApprox(J2, 1e-2)) {
         std::cerr << "Different jacobians detected on " << Test::name << std::endl;
@@ -101,25 +91,33 @@ struct SpeedResult
 
 // Speed-test a Tester on a Test
 template<typename Tester, typename Test>
-SpeedResult test_speed()
+SpeedResult test_speed(const Test & test)
 {
+  static constexpr Eigen::Index Nx = Test::InputSize;
+
+  Eigen::Index nx = test.input_size();
+  Eigen::Matrix<double, Nx, 1> x(nx);
+  x.setOnes();
+  Eigen::Index ny = test(x).size();
+
+  Eigen::MatrixXd J1(ny, nx), J2(ny, nx);
+
   SpeedResult res{};
 
   Tester tester;
-  Test test;
 
   std::atomic<bool> canceled = false;
   std::promise<std::tuple<std::string, std::size_t, std::chrono::nanoseconds>> setup_promise;
   auto setup_ftr = setup_promise.get_future();
 
-  std::thread setup_thr([&tester, &test, &canceled, &setup_promise]() {
-    Eigen::Matrix<double, Test::InputSize, 1> x;
+  std::thread setup_thr([&]() {
+    Eigen::Matrix<double, Nx, 1> x(nx);
     x.setOnes();
     try {
       std::size_t cntr = 0;
       const auto beg   = std::chrono::high_resolution_clock::now();
       while (!canceled) {
-        tester.template setup([&test](const auto & x) { return test(x); }, x);
+        tester.template setup(test, x);
         ++cntr;
       }
       const auto end = std::chrono::high_resolution_clock::now();
@@ -147,16 +145,16 @@ SpeedResult test_speed()
   std::promise<std::tuple<std::string, std::size_t, std::chrono::nanoseconds>> calc_promise;
   auto calc_ftr = calc_promise.get_future();
   canceled.store(false);
-  std::thread calc_thr([&test, &tester, &canceled, &calc_promise]() {
-    Eigen::Matrix<double, Test::InputSize, 1> x;
+  std::thread calc_thr([&]() {
+    Eigen::Matrix<double, Nx, 1> x(nx);
     x.setOnes();
-    typename EigenFunctor<Test, decltype(x)>::JacobianType J;
+    Eigen::MatrixXd J(ny, nx);
 
     try {
       std::size_t cntr = 0;
       const auto beg   = std::chrono::high_resolution_clock::now();
       while (!canceled) {
-        tester.template run([&test](const auto & x) { return test(x); }, x, J);
+        tester.template run(test, x, J);
         ++cntr;
       }
       const auto end = std::chrono::high_resolution_clock::now();

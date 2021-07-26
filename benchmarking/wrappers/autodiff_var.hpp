@@ -6,8 +6,6 @@
 #include <autodiff/reverse/var/eigen.hpp>
 #include <utility>
 
-#include "common.hpp"
-
 namespace ad_testing {
 
 class AutodiffVarWrapper
@@ -20,19 +18,11 @@ public:
   {}
 
   template<typename Func, typename Derived>
-  void run(Func && f,
-    const Eigen::PlainObjectBase<Derived> & x,
-    typename EigenFunctor<Func, Derived>::JacobianType & J)
+  void run(Func && f, const Eigen::PlainObjectBase<Derived> & x, Eigen::MatrixXd & J)
   {
     auto x_ad = x.template cast<autodiff::var>().eval();
     auto F    = f(x_ad);
-
-    if constexpr (EigenFunctor<Func, Derived>::JacobianType::RowsAtCompileTime != -1) {
-      ::autodiff::detail::For<EigenFunctor<Func, Derived>::JacobianType::RowsAtCompileTime>(
-        [&J, &F, &x_ad](auto i) { J.row(i) = autodiff::gradient(F(i), x_ad); });
-    } else {
-      for (auto i = 0u; i != F.rows(); ++i) { J.row(i) = autodiff::gradient(F(i), x_ad); }
-    }
+    for (auto i = 0u; i != F.rows(); ++i) { J.row(i) = autodiff::gradient(F(i), x_ad); }
   }
 };
 

@@ -2,8 +2,7 @@
 #define WRAPPERS__CPPAD_HPP_
 
 #include <cppad/cppad.hpp>
-
-#include "common.hpp"
+#include <Eigen/Core>
 
 namespace ad_testing {
 
@@ -25,13 +24,11 @@ public:
   }
 
   template<typename Func, typename Derived>
-  void run(Func &&,
-    const Eigen::PlainObjectBase<Derived> & x,
-    typename EigenFunctor<Func, Derived>::JacobianType & J)
+  void run(Func &&, const Eigen::PlainObjectBase<Derived> & x, Eigen::MatrixXd & J)
   {
     Eigen::VectorXd x_dyn = x;
     auto j_ad             = f_ad.Jacobian(x_dyn);
-    J                     = Eigen::Map<typename EigenFunctor<Func, Derived>::JacobianTypeRowMajor>(
+    J                     = Eigen::Map<Eigen::Matrix<double, -1, -1, Eigen::RowMajor>>(
       j_ad.data(), f_ad.Range(), f_ad.Domain());
   }
 
