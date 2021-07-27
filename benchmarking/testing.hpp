@@ -41,7 +41,7 @@ bool test_correctness(const Test & test)
 {
   static constexpr Eigen::Index Nx = Test::InputSize;
 
-  Eigen::Index nx = test.input_size();
+  Eigen::Index nx = Nx == -1 ? test.input_size() : Nx;
   Eigen::Matrix<double, Nx, 1> x(nx);
   x.setOnes();
   Eigen::Index ny = test(x).size();
@@ -95,7 +95,7 @@ SpeedResult test_speed(const Test & test)
 {
   static constexpr Eigen::Index Nx = Test::InputSize;
 
-  Eigen::Index nx = test.input_size();
+  Eigen::Index nx = Nx == -1 ? test.input_size(): Nx;
   Eigen::Matrix<double, Nx, 1> x(nx);
   x.setOnes();
   Eigen::Index ny = test(x).size();

@@ -1,14 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(ad_benchmark_tools)
 
-option(INSTALL_ALL      "Install all autodiff tools" OFF)
-option(INSTALL_ADEPT    "Install adept"              OFF)
-option(INSTALL_ADOLC    "Install adolc"              OFF)
-option(INSTALL_AUTODIFF "Install autodiff"           OFF)
-option(INSTALL_CERES    "Install ceres"              OFF)
-option(INSTALL_CPPAD    "Install cppad"              OFF)
-option(INSTALL_CPPADCG  "Install cppad-cg"           OFF)
-option(INSTALL_SACADO   "Install sacado"             OFF)
+set(AUTODIFF_TAG "master" CACHE STRING "autodiff version to install")
+option(ALL_TOOLS "Install other autodiff tools" OFF)
 
 set(CMAKE_BUILD_TYPE Release)
 
@@ -16,12 +10,24 @@ include(ExternalProject)
 
 file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX})
 
-if(${INSTALL_CPPADCG} AND NOT ${INSTALL_CPPAD})
+if(INSTALL_CPPADCG AND NOT INSTALL_CPPAD)
   message(WARNING "Setting INSTALL_CPPAD=ON since it is required by cppad-cg")
   set(INSTALL_CPPAD ON)
 endif()
 
-if(${INSTALL_ADEPT} OR ${INSTALL_ALL})
+# Header-only
+externalproject_add(
+    autodiff-external
+    GIT_REPOSITORY       https://github.com/autodiff/autodiff.git
+    GIT_TAG              ${AUTODIFF_TAG}
+    GIT_CONFIG           advice.detachedHead=false
+    CMAKE_ARGS           -DAUTODIFF_BUILD_TESTS:BOOL=OFF
+                         -DAUTODIFF_BUILD_EXAMPLES:BOOL=OFF
+                         -DAUTODIFF_BUILD_PYTHON:BOOL=OFF
+                         -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+)
+
+if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       adept-external
@@ -45,7 +51,7 @@ if(${INSTALL_ADEPT} OR ${INSTALL_ALL})
   file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_ADEPT)
 endif()
 
-if(${INSTALL_ADOLC} OR ${INSTALL_ALL})
+if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       adolc-external
@@ -70,23 +76,7 @@ if(${INSTALL_ADOLC} OR ${INSTALL_ALL})
   file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_ADOLC)
 endif()
 
-if(${INSTALL_AUTODIFF} OR ${INSTALL_ALL})
-  # Header-only
-  externalproject_add(
-      autodiff-external
-      GIT_REPOSITORY       https://github.com/autodiff/autodiff.git
-      GIT_TAG              v0.6.1
-      GIT_SHALLOW          ON
-      GIT_CONFIG           advice.detachedHead=false
-      CMAKE_ARGS           -DAUTODIFF_BUILD_TESTS:BOOL=OFF
-                           -DAUTODIFF_BUILD_EXAMPLES:BOOL=OFF
-                           -DAUTODIFF_BUILD_PYTHON:BOOL=OFF
-                           -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
-  )
-  file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_AUTODIFF)
-endif()
-
-if(${INSTALL_CERES} OR ${INSTALL_ALL})
+if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       ceres-external
@@ -102,7 +92,7 @@ if(${INSTALL_CERES} OR ${INSTALL_ALL})
   file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_CERES)
 endif()
 
-if(${INSTALL_CPPAD} OR ${INSTALL_ALL})
+if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       cppad-external
@@ -117,7 +107,7 @@ if(${INSTALL_CPPAD} OR ${INSTALL_ALL})
   file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_CPPAD)
 endif()
 
-if(${INSTALL_CPPADCG} OR ${INSTALL_ALL})
+if(ALL_TOOLS)
   # Header-only
   externalproject_add(
       cppad-cg-external
@@ -132,7 +122,7 @@ if(${INSTALL_CPPADCG} OR ${INSTALL_ALL})
   file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_CPPADCG)
 endif()
 
-if(${INSTALL_SACADO} OR ${INSTALL_ALL})
+if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       sacado-external

@@ -1,6 +1,9 @@
-### INSTALL AD TOOLS ###
+ARG AUTODIFF_TAG=master
+ARG ALL_TOOLS=OFF
 
-FROM ubuntu:20.04 as build_tools
+### INSTALL DEPENDENCIES ###
+
+FROM ubuntu:20.04 as builder
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -29,22 +32,30 @@ RUN apt-get update \
     patch \
  && rm -rf /var/lib/apt/lists/*
 
+### INSTALL TOOLS ###
 
-# Build all tools
+FROM builder as tool_builder
 
 COPY tools/ /tools/
+
+ARG AUTODIFF_TAG
+ARG ALL_TOOLS
+
+RUN echo "AUTODIFF_TAG:  ${AUTODIFF_TAG}" \
+ && echo "ALL_TOOLS:     ${ALL_TOOLS}"
 
 RUN cmake \
     -S /tools \
     -B /tools/build \
     -DCMAKE_INSTALL_PREFIX:PATH=/tools-install \
-    -DINSTALL_ALL:BOOL=ON \
+    -DAUTODIFF_TAG:STRING=${AUTODIFF_TAG} \
+    -DALL_TOOLS:BOOL=${ALL_TOOLS} \
  && cmake --build tools/build \
  && rm -rf /tools/build
 
 ### BUILD BENCHMARKS ###
 
-FROM build_tools as build_benchmarks
+FROM tool_builder as benchmark_builder
 
 COPY benchmarking/ /benchmarking/
 
@@ -64,8 +75,8 @@ RUN apt-get update \
     libgoogle-glog-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build_benchmarks /tools-install/ /tools-install/
-COPY --from=build_benchmarks /benchmarking/build /benchmarks/
+COPY --from=benchmark_builder /tools-install/ /tools-install/
+COPY --from=benchmark_builder /benchmarking/build /benchmarks/
 
 WORKDIR /benchmarks
 

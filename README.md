@@ -2,49 +2,67 @@
 
 Scripts and tests to benchmark `autodiff` against itself and against other C++ autodifferentiation tools. The objective of this repository is to make it easy to:
 
-* Evaluate multiple autodifferentiation tools on a specific problem
-* Compare different versions of `autodiff` to track performance
+* Compare performance of multiple autodifferentiation tools 
+```
+docker build --build-arg ALL_TOOLS=ON --build-arg AUTODIFF_TAG=master -t ad_benchmark_all .
+docker run --rm ad_benchmark_all | tee results_all
+```
 
-## Test requirements
+* Compare performance of two `autodiff` branches
+```
+docker build --build-arg ALL_TOOLS=OFF --build-arg AUTODIFF_TAG=master -t ad_benchmark_master .      # build tagged version of autodiff 
+docker build --build-arg ALL_TOOLS=OFF --build-arg AUTODIFF_TAG=mybranch -t ad_benchmark_mybranch .  # build tagged version of autodiff 
 
+docker run --rm ad_benchmark_master | tee results_master
+docker run --rm ad_benchmark_mybranch | tee results_mybranch
+```
+
+* Evaluate autodifferentiation tools on a custom problem: TODO
+
+Results can be visualized using the `plotting/visualization.ipynb` notebook.
+
+The benchmarks all involve computing jacobians for vector-valued functions.
 * Input and outputs are Eigen vectors of static or dynamic size
-* All calculations are in doubles
-* All tools and benchmarks are compiled in `Release` mode (`-O3 -DNDEBUG`)
-* For tape methods use all available optimizations in recording phase
+* All calculations use `double`s
+* Tools and benchmarks are compiled in `Release` mode (`-O3 -DNDEBUG`)
+* For tape methods all available optimizations are employed in recording phase
 
-## Building and running the benchmarks
+Please submit a pull request if you have a benchmark that would complement the included ones.
+
+
+## Usage guide
 
 ### Using docker
 
-Docker is probably the easiest option.
+Docker is the easiest option. The Dockerfile has two arguments: 
+ * `AUTODIFF_TAG`: install specific version of `autodiff`, default `master`
+ * `ALL_TOOLS`: install other autodiff tools for comparison, default `OFF`
 
-1. Build the Dockerfile
-
+Example:
 ```zsh
-docker build -t benchmarks .
+docker build --build-arg ALL_TOOLS=OFF --build-arg AUTODIFF_TAG=d74087d -t ad_benchmark_tag .  # build tagged version of autodiff 
+docker build --build-arg ALL_TOOLS=ON --build-arg AUTODIFF_TAG=master -t ad_benchmark_all .    # build all autodiff tools
 ```
-
-2. Run the benchmarks and collect results
+When the docker image is ready the benchmarks are executed as follows:
 ```zsh
-docker run benchmarks | tee plotting/data
+docker run ad_benchmark_tag 
 ```
-
-3. Visualize the results with the `plotting/visualization.ipynb` notebook.
 
 ### Locally
 
 For development and faster iteration it can be convenient to work outside of docker.
-It is recommended to install the tools in a local folder for easy removal:
+It is recommended to install the tools in a local folder for easy removal later:
 ```zsh
 export BENCHMARK_INSTALL=~/benchmark-install  # modify as desired
 ```
 
-1. Download, compile, and install desired tools
+1. Download, compile, and install desired tools. The `CMakeLists.txt` file has the same arguments as the Dockerfile.
 ```zsh
 mkdir -p tools/build && cd tools/build
 cmake ..                                       \
    -DCMAKE_INSTALL_PREFIX=${BENCHMARK_INSTALL} \
-   -DINSTALL_ALL=ON     # or select individual tools
+   -DAUTODIFF_TAG=master                       \
+   -DALL_TOOLS=ON
 make
 ```
 
@@ -62,7 +80,9 @@ make
 ```
 
 
-## Other autodifferentiation benchmarks
+## Other resources
+
+Links to previous autodifferentiation benchmarks:
 
 * Adept: https://github.com/rjhogan/Adept-2/tree/master/benchmark
 * Ceres: https://github.com/ceres-solver/ceres-solver/tree/master/internal/ceres/autodiff_benchmarks
