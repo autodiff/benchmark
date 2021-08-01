@@ -7,15 +7,19 @@
 #include <chrono>
 #include <future>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <thread>
 #include <tuple>
 #include <utility>
 
+#include "wrappers/numerical.hpp"
+
 
 using namespace std::chrono_literals;
 
 namespace ad_testing {
+
 
 /**
  * @brief Compile-time for loop implementation
@@ -64,7 +68,7 @@ bool test_correctness(const Test & test)
       tester2.run(test, x, J2);
 
       if (!J1.isApprox(J2, 1e-2)) {
-        std::cerr << "Different jacobians detected on " << Test::name << std::endl;
+        std::cerr << "Different jacobians detected on " << test.name() << std::endl;
         std::cerr << "Jacobian from " << Tester1::name << std::endl;
         std::cerr << J1 << std::endl;
         std::cerr << "Jacobian from " << Tester2::name << std::endl;
@@ -176,6 +180,46 @@ SpeedResult test_speed(const Test & test)
   }
 
   return res;
+}
+
+template<typename Tester, typename Test>
+void run_speedtest(const Test & test)
+{
+  auto res = test_speed<Tester>(test);
+
+  std::string name = test.name();
+
+  if (res.calc_timeout || res.setup_timeout) {
+    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(22) << name
+              << "TIMEOUT (DETACHED)" << std::endl;
+    return;
+  }
+
+  // check if error occured
+  if (!res.exception.empty()) {
+    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(22) << name
+              << "EXCEPTION: " << res.exception << std::endl;
+    return;
+  }
+
+  // compare with numerical
+  if (!test_correctness<Tester, NumericalWrapper>(test)) {
+    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(20) << name
+              << "CORRECTNESS ERROR" << std::endl;
+  }
+
+  std::cout << std::left << std::setw(20) << Tester::name << std::left << std::setw(20) << name
+            << std::setprecision(2) << std::right << std::setw(10) << std::scientific
+            << static_cast<double>(res.setup_time.count()) / res.setup_iter << std::right
+            << std::setw(10) << std::scientific
+            << static_cast<double>(res.calc_time.count()) / res.calc_iter << std::endl;
+}
+
+template<typename Tester, typename... Test>
+void run_tests(const std::tuple<Test...> & tests)
+{
+  static_for<std::tuple_size_v<std::decay_t<decltype(tests)>>>(
+    [&](auto i) { run_speedtest<Tester>(std::get<i>(tests)); });
 }
 
 }  // namespace ad_testing

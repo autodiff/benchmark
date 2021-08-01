@@ -10,11 +10,6 @@ include(ExternalProject)
 
 file(MAKE_DIRECTORY ${CMAKE_INSTALL_PREFIX})
 
-if(INSTALL_CPPADCG AND NOT INSTALL_CPPAD)
-  message(WARNING "Setting INSTALL_CPPAD=ON since it is required by cppad-cg")
-  set(INSTALL_CPPAD ON)
-endif()
-
 # Header-only
 externalproject_add(
     autodiff-external
@@ -48,10 +43,7 @@ if(ALL_TOOLS)
                            --disable-openmp
       BUILD_IN_SOURCE      ON
   )
-  file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_ADEPT)
-endif()
 
-if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       adolc-external
@@ -73,10 +65,7 @@ if(ALL_TOOLS)
                            --enable-traceless-refcounting  # hide warning in tapeless mode
       BUILD_IN_SOURCE      ON
   )
-  file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_ADOLC)
-endif()
 
-if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       ceres-external
@@ -89,10 +78,7 @@ if(ALL_TOOLS)
                            -DBUILD_EXAMPLES:BOOL=OFF
                            -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
   )
-  file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_CERES)
-endif()
 
-if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       cppad-external
@@ -104,10 +90,7 @@ if(ALL_TOOLS)
                            -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
   )
   externalproject_add_steptargets(cppad-external install)
-  file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_CPPAD)
-endif()
 
-if(ALL_TOOLS)
   # Header-only
   externalproject_add(
       cppad-cg-external
@@ -119,10 +102,7 @@ if(ALL_TOOLS)
                            -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
       DEPENDS              cppad-external-install
   )
-  file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_CPPADCG)
-endif()
 
-if(ALL_TOOLS)
   # Compiled
   externalproject_add(
       sacado-external
@@ -136,6 +116,5 @@ if(ALL_TOOLS)
                            -DTrilinos_ENABLE_ALL_OPTIONAL_PACKAGES:BOOL=OFF
                            -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_INSTALL_PREFIX}
   )
-  file(TOUCH ${CMAKE_INSTALL_PREFIX}/AD_BENCHMARK_SACADO)
 endif()
 

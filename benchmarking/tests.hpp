@@ -24,11 +24,19 @@ namespace ad_testing {
 template<int _N>
 struct Constant
 {
-  static constexpr char name[]   = "Constant";
   static constexpr int N         = _N;
   static constexpr int InputSize = 1;
 
   Constant(int n) : n_(n) {}
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("Constant") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("Constant") + "_" + std::to_string(n_) + "d";
+    }
+  }
 
   int n() const { return n_; }
   int input_size() const { return 1; }
@@ -50,11 +58,19 @@ struct Constant
 template<int _N>
 struct ManyToOne
 {
-  static constexpr char name[]   = "ManyToOne";
   static constexpr int N         = _N;
   static constexpr int InputSize = N;
 
   ManyToOne(int n) : n_(n) {}
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("ManyToOne") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("ManyToOne") + "_" + std::to_string(n_) + "d";
+    }
+  }
 
   int n() const { return n_; }
   int input_size() const { return n_; }
@@ -78,24 +94,31 @@ struct ManyToOne
 template<int _N>
 struct OneToMany
 {
-  static constexpr char name[]    = "OneToMany";
   static constexpr int N          = _N;
   static constexpr int InputSize  = 1;
-  static constexpr int OutputSize = N == -1 ? -1 : N;
 
   OneToMany(int n) : n_(n) {}
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("OneToMany") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("OneToMany") + "_" + std::to_string(n_) + "d";
+    }
+  }
 
   int n() const { return n_; }
   int input_size() const { return 1; }
 
   template<typename Derived>
-  Eigen::Matrix<typename Derived::Scalar, OutputSize, 1> operator()(
+  Eigen::Matrix<typename Derived::Scalar, N, 1> operator()(
     const Eigen::MatrixBase<Derived> & x) const
   {
     using std::sin, std::cos;
 
     using Scalar = typename Derived::Scalar;
-    Eigen::Matrix<Scalar, OutputSize, 1> ret(n_);
+    Eigen::Matrix<Scalar, N, 1> ret(n_);
     ret(0) = x(0);
     for (int i = 0; i < n_ - 1; ++i) {
       if (i % 2 == 0) {
@@ -118,7 +141,6 @@ struct OneToMany
 template<int _N>
 struct ODE
 {
-  static constexpr char name[]   = "ODE";
   static constexpr int N         = _N;
   static constexpr int InputSize = N;
 
@@ -130,6 +152,15 @@ struct ODE
     // matrix with ones on super-diagonal
     A_.setZero(n_, n_);
     A_.template block(0, 1, n_ - 1, n_ - 1).diagonal().setOnes();
+  }
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("ODE") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("ODE") + "_" + std::to_string(n_) + "d";
+    }
   }
 
   template<typename Derived>
@@ -175,7 +206,6 @@ public:
 template<int _N>
 struct NeuralNet
 {
-  static constexpr char name[]   = "NeuralNet";
   static constexpr int N         = _N;
   static constexpr int InputSize = N;
 
@@ -197,6 +227,15 @@ struct NeuralNet
     W1.setRandom();
     W2.setRandom();
     W3.setRandom();
+  }
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("NeuralNet") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("NeuralNet") + "_" + std::to_string(n0_) + "d";
+    }
   }
 
   template<typename Derived>
@@ -247,12 +286,20 @@ public:
 template<int _N>
 struct ReprojectionError
 {
-  static constexpr char name[]   = "Reprojection";
   static constexpr int N         = _N;
   static constexpr int InputSize = N == -1 ? -1 : 6;
 
   int n() const { return n_; }
   int input_size() const { return 6; }
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("Reprojection") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("Reprojection") + "_" + std::to_string(n_) + "d";
+    }
+  }
 
   ReprojectionError(int n) : n_(n)
   {
@@ -320,7 +367,6 @@ public:
 template<int _N>
 struct Manipulator
 {
-  static constexpr char name[]   = "Manipulator";
   static constexpr int N         = _N;
   static constexpr int InputSize = N == -1 ? -1 : 6;
 
@@ -341,6 +387,15 @@ struct Manipulator
                                    * Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitY())
                                    * Eigen::AngleAxis(M_PI_2 * dis(gen), Eigen::Vector3d::UnitZ()),
         Eigen::Vector3d{2 * dis(gen), 2 * dis(gen), 2 * dis(gen)}};
+    }
+  }
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("Manipulator") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("Manipulator") + "_" + std::to_string(n_) + "d";
     }
   }
 
@@ -366,20 +421,26 @@ private:
  *
  * f: R^6 -> R^6
  */
-template<int _N>
+template<int N>
 struct SE3ODE
 {
-  static constexpr char name[]   = "SE3ODE";
-  static constexpr int N         = _N;
   static constexpr int InputSize = N == -1 ? -1 : 6;
 
-  int n() const { return n_; }
   int input_size() const { return 6; }
 
   SE3ODE(int n) : n_(n)
   {
     velocity << 0.1, -0.2, 0.3, 0.1, -0.2, 0.3;
     Pfinal = SE3<double>{} * SE3<double>::exp(static_cast<double>(n_) * 0.01 * velocity);
+  }
+
+  std::string name() const
+  {
+    if (N != -1) {
+      return std::string("SE3ODE") + "_" + std::to_string(N) + "s";
+    } else {
+      return std::string("SE3ODE") + "_" + std::to_string(n_) + "d";
+    }
   }
 
   template<typename Derived>

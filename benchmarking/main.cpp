@@ -41,52 +41,6 @@
 
 using namespace ad_testing;
 
-template<typename Tester, typename Test>
-void run_speedtest(const Test & test)
-{
-  auto res = ad_testing::test_speed<Tester>(test);
-
-  std::string name = std::string(Test::name);
-
-  if (Test::N != -1) {
-    name += "_" + std::to_string(Test::N) + "s";
-  } else {
-    name += "_" + std::to_string(test.n()) + "d";
-  }
-
-  if (res.calc_timeout || res.setup_timeout) {
-    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(22) << name
-              << "TIMEOUT (DETACHED)" << std::endl;
-    return;
-  }
-
-  // check if error occured
-  if (!res.exception.empty()) {
-    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(22) << name
-              << "EXCEPTION: " << res.exception << std::endl;
-    return;
-  }
-
-  // compare with numerical
-  if (!ad_testing::test_correctness<Tester, NumericalWrapper>(test)) {
-    std::cerr << std::left << std::setw(20) << Tester::name << std::left << std::setw(20) << name
-              << "CORRECTNESS ERROR" << std::endl;
-  }
-
-  std::cout << std::left << std::setw(20) << Tester::name << std::left << std::setw(20) << name
-            << std::setprecision(2) << std::right << std::setw(10) << std::scientific
-            << static_cast<double>(res.setup_time.count()) / res.setup_iter << std::right
-            << std::setw(10) << std::scientific
-            << static_cast<double>(res.calc_time.count()) / res.calc_iter << std::endl;
-}
-
-template<typename Tester, typename... Test>
-void run_tests(const std::tuple<Test...> & tests)
-{
-  ad_testing::static_for<std::tuple_size_v<std::decay_t<decltype(tests)>>>(
-    [&](auto i) { run_speedtest<Tester>(std::get<i>(tests)); });
-}
-
 int main()
 {
   auto basic_tests = std::make_tuple(Constant<4>(4),
