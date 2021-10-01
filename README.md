@@ -9,9 +9,9 @@ The objective of this repository is to make it easy to:
 docker build --build-arg ALL_TOOLS=ON -t ad_benchmark_all .
 docker run --rm ad_benchmark_all | tee results_all
 ```
-Not that downloading and compiling the autodifferentiation tools, as well as the benchmark suite, may take considerable time.
+Note that downloading and compiling the autodifferentiation tools, as well as the benchmark suite, may take considerable time.
 
-* Compare two `autodiff` branches on the benchmark suite
+* Compare two `autodiff` commits/tags/branches on the benchmark suite
 ```zsh
 docker build --build-arg ALL_TOOLS=OFF --build-arg AUTODIFF_TAG=master -t ad_benchmark_master .
 docker build --build-arg ALL_TOOLS=OFF --build-arg AUTODIFF_TAG=mybranch -t ad_benchmark_mybranch .
@@ -33,7 +33,7 @@ The output from benchmarks is printed to `stdout` in the format
 ```
 <AD Tool>     <Test name>    <Init time>    <Differentiation time>
 ```
-Here `<Init time>` is the time required to prepare the tool for differentiation of a new function. It is (practically) zero for instantaneous tools (numerical, autodiff, adolc, etc), but may be significant for tape-based methods (CppAD, CppAD-CG, etc). Times are average runtimes and are reported in nanoseconds.
+Here `<Init time>` is the time required to prepare the tool for differentiation of a new function. It is (practically) zero for tools implementing the forward method (numerical, autodiff, adolc, etc), but may be significant for tape-based methods (CppAD, CppAD-CG, etc). Times are average runtimes and are reported in nanoseconds.
 
 
 Results can be visualized using the included `plotting/visualization.ipynb` notebook.
